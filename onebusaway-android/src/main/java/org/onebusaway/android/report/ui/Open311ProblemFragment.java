@@ -478,33 +478,43 @@ public class Open311ProblemFragment extends BaseReportFragment implements
      * Prepare submit forms and submit report
      */
     private void submitReport() {
-        // Save the open311 user
         saveOpen311User();
+        Open311User open311User = mAnonymousReportingCheckBox.isChecked() ? getOpen311UserFromStrings() : getOpen311UserFromUI();
+        ServiceRequest serviceRequest = createServiceRequest(open311User);
 
-        // Prepare issue description
-        String description = ((EditText) getActivity().findViewById(R.id.ri_editTextDesc)).getText().toString();
+        int errorCode = Open311Validator.validateServiceRequest(serviceRequest,
+                mOpen311.getOpen311Option().getOpen311Type(), mServiceDescription);
 
-        Open311User open311User;
-
-        if (!mAnonymousReportingCheckBox.isChecked()) {
-            open311User = getOpen311UserFromUI();
+        if (Open311Validator.isValid(errorCode)) {
+            appendTransitServiceParameters(serviceRequest);
+            showProgressDialog(true);
+            mRequestTask = new ServiceRequestTask(mOpen311, serviceRequest, this);
+            mRequestTask.execute();
+            ObaAnalytics.reportUiEvent(mFirebaseAnalytics, getString(R.string.analytics_problem), mService.getService_name());
         } else {
-            open311User = getOpen311UserFromStrings();
+            createToastMessage(Open311Validator.getErrorMessageForServiceRequestByErrorCode(errorCode));
         }
+    }
 
+    private ServiceRequest createServiceRequest(Open311User open311User) {
+        String description = ((EditText) getActivity().findViewById(R.id.ri_editTextDesc)).getText().toString();
         String appUid = PreferenceUtils.getString(Application.APP_UID);
+        Location location = getIssueLocationHelper().getIssueLocation();
 
-        IssueLocationHelper issueLocationHelper = getIssueLocationHelper();
-
-        ServiceRequest.Builder builder = new ServiceRequest.Builder();
-        builder.setJurisdiction_id(mOpen311.getJurisdiction()).setService_code(mService.getService_code()).
-                setService_name(mService.getService_name()).
-                setLatitude(issueLocationHelper.getIssueLocation().getLatitude()).
-                setLongitude(issueLocationHelper.getIssueLocation().getLongitude()).setSummary(null).
-                setDescription(description).setEmail(open311User.getEmail()).
-                setFirst_name(open311User.getName()).setLast_name(open311User.getLastName()).
-                setPhone(open311User.getPhone()).setAddress_string(getCurrentAddress()).
-                setDevice_id(appUid);
+        ServiceRequest.Builder builder = new ServiceRequest.Builder()
+                .setJurisdiction_id(mOpen311.getJurisdiction())
+                .setService_code(mService.getService_code())
+                .setService_name(mService.getService_name())
+                .setLatitude(location.getLatitude())
+                .setLongitude(location.getLongitude())
+                .setSummary(null)
+                .setDescription(description)
+                .setEmail(open311User.getEmail())
+                .setFirst_name(open311User.getName())
+                .setLast_name(open311User.getLastName())
+                .setPhone(open311User.getPhone())
+                .setAddress_string(getCurrentAddress())
+                .setDevice_id(appUid);
 
         if (mImagePath != null) {
             attachImage(builder);
@@ -513,29 +523,16 @@ public class Open311ProblemFragment extends BaseReportFragment implements
         ServiceRequest serviceRequest = builder.createServiceRequest();
         List<Open311AttributePair> attributes = createOpen311Attributes(mServiceDescription);
         serviceRequest.setAttributes(attributes);
+        return serviceRequest;
+    }
 
-        int errorCode = Open311Validator.validateServiceRequest(serviceRequest,
-                mOpen311.getOpen311Option().getOpen311Type(), mServiceDescription);
-
-
-        if (Open311Validator.isValid(errorCode)) {
-            // Append transit service parameters to issue description
-            if (ServiceUtils.isTransitServiceByType(mService.getType())) {
-                description += getTransitIssueParameters(mService);
-                serviceRequest.setDescription(description);
-            }
-
-            // Start progress
-            showProgressDialog(true);
-
-            mRequestTask = new ServiceRequestTask(mOpen311, serviceRequest, this);
-            mRequestTask.execute();
-
-            ObaAnalytics.reportUiEvent(mFirebaseAnalytics, getString(R.string.analytics_problem), mService.getService_name());
-        } else {
-            createToastMessage(Open311Validator.getErrorMessageForServiceRequestByErrorCode(errorCode));
+    private void appendTransitServiceParameters(ServiceRequest serviceRequest) {
+        if (ServiceUtils.isTransitServiceByType(mService.getType())) {
+            String description = serviceRequest.getDescription() + getTransitIssueParameters(mService);
+            serviceRequest.setDescription(description);
         }
     }
+
 
     /**
      * Attaches the captured image saved in this fragment to the provided builder
