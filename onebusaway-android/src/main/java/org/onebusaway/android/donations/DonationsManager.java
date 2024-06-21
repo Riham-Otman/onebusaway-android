@@ -48,8 +48,8 @@ public class DonationsManager {
 
     // Preference Keys
 
-    private static String donationRequestDismissedDateKey = "donationRequestDismissedDateKey";
-    private static String donationRequestReminderDateKey = "donationRequestReminderDateKey";
+    private static final String donationDismissedkey = "donationDismissedkey";
+    private static String donationRequestKey = "donationRequestKey";
 
     // region Donation Request Dismissal
 
@@ -58,7 +58,7 @@ public class DonationsManager {
      * or because they tapped the 'dismiss' button, or null if the date has not been set.
      */
     public Date getDonationRequestDismissedDate() {
-        Long timestamp = mPreferences.getLong(donationRequestDismissedDateKey, -1);
+        Long timestamp = mPreferences.getLong(donationDismissedkey, -1);
         if (timestamp < 1) {
             return null;
         }
@@ -73,7 +73,7 @@ public class DonationsManager {
     public void setDonationRequestDismissedDate(Date date) {
         PreferenceUtils.saveLong(
                 mPreferences,
-                donationRequestDismissedDateKey,
+                donationDismissedkey,
                 date == null ? -1 : date.getTime()
         );
     }
@@ -93,7 +93,7 @@ public class DonationsManager {
      * @return Optional date at which the app should remind the user to donate.
      */
     public Date getDonationRequestReminderDate() {
-        Long timestamp = mPreferences.getLong(donationRequestReminderDateKey, -1);
+        Long timestamp = mPreferences.getLong(donationRequestKey, -1);
         if (timestamp < 1) {
             return null;
         }
@@ -104,7 +104,7 @@ public class DonationsManager {
     public void setDonationRequestReminderDate(Date date) {
         PreferenceUtils.saveLong(
                 mPreferences,
-                donationRequestReminderDateKey,
+                donationRequestKey,
                 date == null ? -1 : date.getTime()
         );
     }
