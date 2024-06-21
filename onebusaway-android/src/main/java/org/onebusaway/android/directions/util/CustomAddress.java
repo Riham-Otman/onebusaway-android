@@ -85,18 +85,8 @@ public class CustomAddress extends Address {
         // and https://github.com/CUTR-at-USF/pelias-client-library/blob/master/src/test/java/edu/usf/cutr/pelias/AutocompleteTest.java#L42
         super.setAddressLine(0, (String) address.getProperties().get("name"));
         super.setFeatureName((String) address.getProperties().get("label"));
-//        super.setAdminArea(address.getAdminArea());
-//        super.setSubAdminArea(address.getSubAdminArea());
-//        super.setLocality((String) address.getProperties().get("locality"));
-//        super.setSubLocality(address.getSubLocality());
-//        super.setThoroughfare(address.getThoroughfare());
-//        super.setSubThoroughfare(address.getSubThoroughfare());
         super.setPostalCode((String) address.getProperties().get("postalcode"));
-//        super.setCountryCode(address.getCountryCode());
         super.setCountryName((String) address.getProperties().get("country"));
-//        super.setPhone(address.getPhone());
-//        super.setUrl(address.getUrl());
-//        super.setExtras(address.getExtras());
 
         Point p = (Point) address.getGeometry();
         super.setLatitude(p.getCoordinates().getLatitude());
@@ -117,32 +107,35 @@ public class CustomAddress extends Address {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+
+        // Prioritize feature name if available
         if (getFeatureName() != null) {
             sb.append(getFeatureName());
-        }
-        if (getSubThoroughfare() != null && !getSubThoroughfare().equals(getFeatureName())) {
-            sb.append(", " + getSubThoroughfare());
-        }
-        if (getThoroughfare() != null && !getThoroughfare().equals(getFeatureName())) {
-            sb.append(" " + getThoroughfare());
-        }
-        if (getSubAdminArea() != null && !getSubAdminArea().equals(getFeatureName())) {
-            sb.append(", " + getSubAdminArea());
-        }
-        if (getLocality() != null && !getLocality().equals(getFeatureName())) {
-            sb.append(", " + getLocality());
-        }
-        if (TextUtils.isEmpty(sb.toString())) {
-            int maxLines = (ADDRESS_MAX_LINES_TO_SHOW > getMaxAddressLineIndex())
-                    ? getMaxAddressLineIndex() + 1 : ADDRESS_MAX_LINES_TO_SHOW;
-            sb.append(getAddressLine(0));
-            for (int i = 1; i < maxLines; i++) {
-                if (getAddressLine(i) != null) {
-                    sb.append(", " + getAddressLine(i));
+        }// Append other address components if they are not the same as the feature name
+        appendIfDifferent(sb, ", ", getSubThoroughfare());
+        appendIfDifferent(sb, " ", getThoroughfare());
+        appendIfDifferent(sb, ", ", getSubAdminArea());
+        appendIfDifferent(sb, ", ", getLocality());
+
+        // If no components were added, use address lines (up to a limit)
+        if (sb.length() == 0) {
+            int maxLines = Math.min(ADDRESS_MAX_LINES_TO_SHOW, getMaxAddressLineIndex()+ 1);
+            for (int i = 0; i < maxLines; i++) {
+                if (i > 0) {
+                    sb.append(", ");
                 }
+                sb.append(getAddressLine(i));
             }
         }
+
         return sb.toString();
+    }
+
+    // Helper method to append a string if it's different from the existing content
+    private void appendIfDifferent(StringBuilder sb, String prefix, String value) {
+        if (value != null && !value.equals(getFeatureName())) {
+            sb.append(prefix).append(value);
+        }
     }
 
     public static final Parcelable.Creator<CustomAddress> CREATOR =
